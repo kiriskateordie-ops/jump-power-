@@ -1,0 +1,123 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JUMP ANALYZER</title>
+<style>
+body {
+  font-family: sans-serif;
+  max-width: 600px;
+  margin: auto;
+  padding: 20px;
+  background: #101827;
+  color: white;
+}
+h1 { color: #55c8ff; }
+.panel {
+  background: #1e293b;
+  padding: 18px;
+  border-radius: 14px;
+  margin: 18px 0;
+}
+input, button {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 13px;
+  margin-top: 10px;
+  border-radius: 8px;
+  font-size: 16px;
+}
+button {
+  border: none;
+  background: #1688d4;
+  color: white;
+  font-weight: bold;
+}
+video {
+  width: 100%;
+  margin-top: 15px;
+  border-radius: 10px;
+}
+.result {
+  font-size: 20px;
+  color: #55c8ff;
+  white-space: pre-line;
+}
+</style>
+</head>
+<body>
+
+<h1>🏀 JUMP ANALYZER</h1>
+<p>ジャンプ動画から対空時間を測定しよう。</p>
+
+<div class="panel">
+  <h2>① 動画をアップロード</h2>
+  <input type="file" id="videoFile" accept="video/*">
+  <video id="video" controls playsinline hidden></video>
+  <p>動画を再生し、離陸と着地のフレームを確認しよう。</p>
+</div>
+
+<div class="panel">
+  <h2>② 対空時間を入力</h2>
+  <label>離陸した時刻（秒）</label>
+  <input id="takeoff" type="number" min="0" step="0.01" placeholder="例：2.40">
+
+  <label>着地した時刻（秒）</label>
+  <input id="landing" type="number" min="0" step="0.01" placeholder="例：3.05">
+
+  <button onclick="analyze()">ジャンプ力を計算</button>
+</div>
+
+<div class="panel">
+  <h2>③ 分析結果</h2>
+  <div id="result" class="result">まだ測定していません。</div>
+</div>
+
+<script>
+const fileInput = document.getElementById("videoFile");
+const video = document.getElementById("video");
+let videoURL = null;
+
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  if (videoURL) URL.revokeObjectURL(videoURL);
+  videoURL = URL.createObjectURL(file);
+  video.src = videoURL;
+  video.hidden = false;
+  video.load();
+});
+
+function analyze() {
+  const takeoffInput = document.getElementById("takeoff").value;
+  const landingInput = document.getElementById("landing").value;
+  const result = document.getElementById("result");
+
+  if (takeoffInput === "" || landingInput === "") {
+    result.textContent = "離陸と着地の時刻を入力してください。";
+    return;
+  }
+
+  const takeoff = Number(takeoffInput);
+  const landing = Number(landingInput);
+  const time = landing - takeoff;
+
+  if (takeoff < 0 || time <= 0) {
+    result.textContent = "時刻を正しく入力してください。";
+    return;
+  }
+
+  const height = 9.81 * time * time / 8;
+
+  result.textContent =
+    "対空時間：" + time.toFixed(3) + " 秒\n" +
+    "推定垂直跳び：" + (height * 100).toFixed(1) + " cm\n\n" +
+    "※ 離陸時と着地時の重心の高さが同じと仮定した推定値です。";
+}
+</script>
+
+</body>
+</html>
