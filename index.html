@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JUMP ANALYZER</title>
+<style>
+body {
+  font-family: sans-serif;
+  max-width: 600px;
+  margin: auto;
+  padding: 18px;
+  background: #101827;
+  color: white;
+}
+h1 { color: #55c8ff; }
+.panel {
+  background: #1e293b;
+  padding: 16px;
+  border-radius: 14px;
+  margin: 16px 0;
+}
+input, button {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  margin-top: 9px;
+  border-radius: 8px;
+  font-size: 16px;
+}
+input { border: 1px solid #64748b; }
+button {
+  background: #1688d4;
+  color: white;
+  border: 0;
+  font-weight: bold;
+}
+.secondary { background: #475569; }
+video {
+  width: 100%;
+  margin-top: 12px;
+  border-radius: 8px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+}
+.row button { flex: 1; }
+.result {
+  white-space: pre-line;
+  color: #55c8ff;
+  line-height: 1.8;
+}
+small { color: #cbd5e1; }
+</style>
+</head>
+<body>
+
+<h1>🏀 JUMP ANALYZER</h1>
+<p>動画からジャンプの対空時間を測定しよう。</p>
+
+<div class="panel">
+  <h2>① 動画を選ぶ</h2>
+  <input id="file" type="file" accept="video/*">
+  <video id="video" controls playsinline hidden></video>
+  <p id="status">まだ動画が選択されていません。</p>
+</div>
+
+<div class="panel">
+  <h2>② 離陸と着地を選ぶ</h2>
+  <p>動画を一時停止して、ボタンで瞬間を細かく調整しよう。</p>
+
+  <div class="row">
+    <button class="secondary" onclick="step(-1)">◀ 少し戻る</button>
+    <button class="secondary" onclick="step(1)">少し進む ▶</button>
+  </div>
+
+  <p>現在の動画時刻：<strong id="current">0.000</strong> 秒</p>
+
+  <button onclick="setTime('takeoff')">
+    離陸時刻に設定
+  </button>
+  <p>離陸：<strong id="takeoffView">未設定</strong></p>
+
+  <button onclick="setTime('landing')">
+    着地時刻に設定
+  </button>
+  <p>着地：<strong id="landingView">未設定</strong></p>
+
+  <small>※ コマ送りは約1/30秒単位。動画のフレームレートによって精度が変わります。</small>
+</div>
+
+<div class="panel">
+  <h2>③ ジャンプ高を計算</h2>
+  <button onclick="analyze()">対空時間とジャンプ高を計算</button>
+  <div id="result" class="result">測定結果はここに表示されます。</div>
+</div>
+
+<script>
+const fileInput = document.getElementById("file");
+const video = document.getElementById("video");
+
+let videoURL = null;
+let takeoff = null;
+let landing = null;
+
+video.addEventListener("timeupdate", updateCurrent);
+video.addEventListener("seeked", updateCurrent);
+
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  if (videoURL) URL.revokeObjectURL(videoURL);
+  videoURL = URL.createObjectURL(file);
+  video.src = videoURL;
+  video.hidden = false;
+  video.load();
+
+  takeoff = null;
+  landing = null;
+  document.getElementById("takeoffView").textContent = "未設定";
+  document.getElementById("landingView").textContent = "未設定";
+  document.getElementById("result").textContent = "動画を読み込みました。";
+  document.getElementById("status").textContent = file.name;
+});
+
+function updateCurrent() {
+  document.getElementById("current").textContent =
+    video.currentTime.toFixed(3);
+}
+
+function step(direction) {
+  if (!video.src) {
+    alert("先に動画を選んでね。");
+    return;
+  }
+  video.pause();
+  video.currentTime = Math.max(
+    0,
+    Math.min(video.duration || 0, video.currentTime + direction / 30)
+  );
+  updateCurrent();
+}
+
+function setTime(type) {
+  if (!video.src || !video.videoWidth) {
+    alert("先に動画を選んでね。");
+    return;
+  }
+
+  video.pause();
+
+  if (type === "takeoff") {
+    takeoff = video.currentTime;
+    document.getElementById("takeoffView").textContent =
+      takeoff.toFixed(3) + " 秒";
+  } else {
+    landing = video.currentTime;
+    document.getElementById("landingView").textContent =
+      landing.toFixed(3) + " 秒";
+  }
+}
+
+function analyze() {
+  const result = document.getElementById("result");
+
+  if (takeoff === null || landing === null) {
+    result.textContent = "先に離陸と着地の時刻を設定してください。";
+    return;
+  }
+
+  const time = landing - takeoff;
+
+  if (time <= 0) {
+    result.textContent = "着地は離陸より後の時刻に設定してください。";
+    return;
+  }
+
+  const height = 9.81 * time * time / 8 * 100;
+
+  result.textContent =
+    "対空時間：" + time.toFixed(3) + " 秒\n" +
+    "推定垂直跳び：" + height.toFixed(1) + " cm\n\n" +
+    "※ 離陸と着地の重心の高さが同じと仮定した理論値です。";
+}
+</script>
+
+</body>
+</html>
